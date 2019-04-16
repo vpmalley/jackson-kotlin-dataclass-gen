@@ -7,18 +7,19 @@ import os
 # constants and default values
 default_package = 'com.example';
 default_visibility = '';
-default_indent = '  '; # two spaces
+default_indent = '    '; # four spaces
 
 beans_dir = 'model/';
 file_ext = '.kt'
-sep = ',\n';
+sep = '\n';
 package_prefix = 'package ';
 package_suffix = '\n\n';
+default_imports = ['import io.realm.RealmObject\n']
 import_string_line = '';
-import_list_line = '';
-class_prefix = '\ndata class ';
-class_suffix = '(\n';
-class_end = '\n)'
+import_list_line = 'import io.realm.RealmList\n';
+class_prefix = '\nopen class ';
+class_suffix = ' : RealmObject() {\n';
+class_end = '\n}'
 
 
 # Retrieves the file located at <beanFile>
@@ -43,7 +44,7 @@ def visitAndPrintBean(beanName, sampleBean):
     for key in sampleBean.keys():
       beanType = getType(key, sampleBean[key]);
       # constructing the member line
-      beanDesc += default_indent + memberVisibility + ' val ' + key + ': ' + beanType['type'] + ' = ' + beanType['defaultValue'] + sep;
+      beanDesc += default_indent + memberVisibility + ' var ' + key + ': ' + beanType['type'] + ' = ' + beanType['defaultValue'] + sep;
 
       # adding all imports of the bean to the global imports, removing duplicates along the way
       for import_line in beanType['imports']:
@@ -89,21 +90,21 @@ def visitAndPrintBean(beanName, sampleBean):
 #  - imports, an array of strings containing the import lines to add to the java file
 def getType(key, sampleElement):
   elementType = '';
-  imports = [];
+  imports = default_imports;
   if type(sampleElement) is dict: # the member type is a lower level bean
     visitAndPrintBean(key.capitalize(), sampleElement);
     elementType = key.capitalize();
     defaultValue = key.capitalize() + '()';
   elif type(sampleElement) is list:
     if not sampleElement: # if the array is empty
-      elementType = 'List<Object>';
+      elementType = 'List<Any>';
     else:
       # assumption : all items of an array have the same structure
       listType = getType(key, sampleElement[0]);
-      elementType = 'List<' + listType['type'] + '>';
+      elementType = 'RealmList<' + listType['type'] + '>';
       imports.extend(listType['imports']);
     imports.append(import_list_line);
-    defaultValue = 'emptyList()'
+    defaultValue = 'RealmList()'
   elif type(sampleElement) is unicode:
     elementType = 'String';
     imports.append(import_string_line);
@@ -112,13 +113,13 @@ def getType(key, sampleElement):
     elementType = 'Int';
     defaultValue = '0'
   elif type(sampleElement) is float:
-    elementType = 'Float';
-    defaultValue = '0f'
+    elementType = 'Double';
+    defaultValue = '0.0'
   elif type(sampleElement) is bool:
     elementType = 'Boolean';
     defaultValue = 'false'
   else :
-    elementType = 'Object';
+    elementType = 'Any';
   return { 'type' : elementType, 'imports' : imports, 'defaultValue' : defaultValue};
 
 
